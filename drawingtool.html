@@ -1,0 +1,165 @@
+<html>
+  <head>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>    
+    <meta charset="utf-8" />
+    <title>Drawing Tool using Konva JS</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+      }
+      .drawContainer{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap:5px;
+        padding: 5px;
+        margin-top: 5px;
+      }
+      #tool, #brush-color-picker {
+        height:20px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="drawContainer">
+      Drawing Tool:
+      <select id="tool">
+        <option value="brush">Brush</option>
+        <option value="eraser">Eraser</option>
+      </select>
+      <input type = "color" id ="brush-color-picker">
+      <input type="range" id="width-slider" min="0" max="100" step="1" value="5">
+    </div>
+    <div id="container"></div>
+    <script>
+      var brushsize = 5;
+      var color = '050505';
+      var mode = 'brush';
+
+      $('#brush-color-picker').change(function() {
+            context.strokeStyle = $(this).val();
+            var color = $(this).val();
+            if (mode === 'eraser') {
+                $('#container').css({
+                    'cursor': 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' stroke=\'%23000000\' width=\'' + brushsize + 'px\' height=\'' + brushsize + 'px\' viewBox=\'0 0 10.04 10.04\'><circle cx=\'5.02\' cy=\'5.02\' r=\'4.52\'/></svg>") ' + brushsize / 2 + ' ' + brushsize / 2 + ', auto',
+                });
+            } else if ((mode === 'brush')) {
+                $('#container').css({
+                    'cursor': 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'%23' + color.substring(1) + '\' width=\'' + brushsize + 'px\' height=\'' + brushsize + 'px\' viewBox=\'0 0 10.04 10.04\'><circle cx=\'5.02\' cy=\'5.02\' r=\'4.52\'/></svg>") ' + brushsize / 2 + ' ' + brushsize / 2 + ', auto',
+                });
+            }
+      });
+
+      $('#width-slider').change(function() {
+          brushsize = $(this).val();
+          context.lineWidth = brushsize;
+          color = $('#brush-color-picker').val().substring(1);
+          if (mode === 'eraser') {
+              $('#container').css({
+                  'cursor': 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' stroke=\'%23000000\' width=\'' + brushsize + 'px\' height=\'' + brushsize + 'px\' viewBox=\'0 0 10.04 10.04\'><circle cx=\'5.02\' cy=\'5.02\' r=\'4.52\'/></svg>") ' + brushsize / 2 + ' ' + brushsize / 2 + ', auto',
+              });
+          } else if (mode === 'brush') {
+              $('#container').css({
+                  'cursor': 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'%23' + color + '\' width=\'' + brushsize + 'px\' height=\'' + brushsize + 'px\' viewBox=\'0 0 10.04 10.04\'><circle cx=\'5.02\' cy=\'5.02\' r=\'4.52\'/></svg>") ' + brushsize / 2 + ' ' + brushsize / 2 + ', auto',
+              });
+          }
+      });
+   
+      var width = window.innerWidth;
+      var height = window.innerHeight - 25;
+
+      var stage = new Konva.Stage({
+        container: 'container',
+        width: width,
+        height: height,
+      });
+
+      var layer = new Konva.Layer();
+      stage.add(layer);
+
+      var canvas = document.createElement('canvas');
+      canvas.width = stage.width();
+      canvas.height = stage.height();
+
+      var image = new Konva.Image({
+        image: canvas,
+        x: 0,
+        y: 0,
+      });
+      layer.add(image);
+
+      $('#container').css({
+          'cursor': 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'%23000000\' width=\'' + brushsize + 'px\' height=\'' + brushsize + 'px\' viewBox=\'0 0 10.04 10.04\'><circle cx=\'5.02\' cy=\'5.02\' r=\'4.52\'/></svg>") ' + (brushsize / 2) + ' ' + (brushsize / 2) + ', auto'
+      });
+
+      var context = canvas.getContext('2d');
+      context.strokeStyle = '#050505';
+      context.lineJoin = 'round';
+      context.lineWidth = 5;
+
+      var isPaint = false;
+      var lastPointerPosition;
+      var mode = 'brush';
+
+      image.on('mousedown touchstart', function () {
+        isPaint = true;
+        lastPointerPosition = stage.getPointerPosition();
+      });
+
+      stage.on('mouseup touchend', function () {
+        isPaint = false;
+      });
+
+      stage.on('mousemove touchmove', function () {
+        if (!isPaint) {
+          return;
+        }
+
+        if (mode === 'brush') {
+          context.globalCompositeOperation = 'source-over';
+        }
+        if (mode === 'eraser') {
+          context.globalCompositeOperation = 'destination-out';
+        }
+        context.beginPath();
+
+        var localPos = {
+          x: lastPointerPosition.x - image.x(),
+          y: lastPointerPosition.y - image.y(),
+        };
+        context.moveTo(localPos.x, localPos.y);
+        var pos = stage.getPointerPosition();
+        localPos = {
+          x: pos.x - image.x(),
+          y: pos.y - image.y(),
+        };
+        context.lineTo(localPos.x, localPos.y);
+        context.closePath();
+        context.stroke();
+
+        lastPointerPosition = pos;
+        layer.batchDraw();
+      });
+
+      var select = document.getElementById('tool');
+        select.addEventListener('change', function () {
+            mode = select.value;
+            if (mode === 'eraser') {
+                $('#container').css({
+                    'cursor': 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' stroke=\'%23000000\' width=\'' + brushsize + 'px\' height=\'' + brushsize + 'px\' viewBox=\'0 0 10.04 10.04\'><circle cx=\'5.02\' cy=\'5.02\' r=\'4.52\'/></svg>") ' + brushsize / 2 + ' ' + brushsize / 2 + ', auto',
+                });
+            } else if (mode === 'brush') {
+                var color = $('#brush-color-picker').val();
+                $('#container').css({
+                    'cursor': 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'%23' + color.substring(1) + '\' width=\'' + brushsize + 'px\' height=\'' + brushsize + 'px\' viewBox=\'0 0 10.04 10.04\'><circle cx=\'5.02\' cy=\'5.02\' r=\'4.52\'/></svg>") ' + brushsize / 2 + ' ' + brushsize / 2 + ', auto',
+                });
+            }
+        });
+    </script>
+  </body>
+</html>
